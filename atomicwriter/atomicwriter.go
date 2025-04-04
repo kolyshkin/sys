@@ -202,7 +202,7 @@ type syncFileCloser struct {
 }
 
 func (w syncFileCloser) Close() error {
-	err := w.File.Sync()
+	err := w.Sync()
 	if err1 := w.File.Close(); err == nil {
 		err = err1
 	}
