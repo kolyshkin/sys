@@ -1,6 +1,18 @@
+version: "2"
+
+formatters:
+  enable:
+    - gofumpt
+  exclusions:
+    generated: disable
+
 linters:
   enable:
     - errorlint
-    - gofumpt
     - unconvert
     - unparam
+  exclusions:
+    generated: disable
+    presets:
+      - comments
+      - std-error-handling
