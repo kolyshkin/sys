@@ -98,13 +98,6 @@ func TestMount(t *testing.T) {
 	}
 }
 
-// ensureUnmount umounts mnt checking for errors
-func ensureUnmount(t *testing.T, mnt string) {
-	if err := Unmount(mnt); err != nil {
-		t.Error(err)
-	}
-}
-
 // validateMount checks that mnt has the given options
 func validateMount(t *testing.T, mnt string, opts, optional, vfs string) {
 	info, err := mountinfo.GetMounts(nil)

@@ -13,6 +13,14 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// ensureUnmount umounts mnt checking for errors
+func ensureUnmount(t *testing.T, mnt string) {
+	t.Helper()
+	if err := Unmount(mnt); err != nil {
+		t.Error(err)
+	}
+}
+
 func TestMountOptionsParsing(t *testing.T) {
 	options := "noatime,ro,noexec,size=10k"
 
