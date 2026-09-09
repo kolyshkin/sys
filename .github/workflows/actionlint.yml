@@ -23,4 +23,4 @@ jobs:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         persist-credentials: false
-    - uses: devops-actions/actionlint@ec02b36684b2f574f1d219ad0a43b082e46bf3e4 # v0.1.13
+    - uses: kjanat/actionlint@733ac2f73f6d80c269aa7a02d1ee83673fa5ab33 # v1.16
