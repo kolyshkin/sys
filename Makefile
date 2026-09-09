@@ -13,9 +13,9 @@ clean:
 	$(RM) */coverage.txt
 
 .PHONY: foreach
-foreach: ## Run $(CMD) for every package.
+foreach: ## Run $(CMD) for every module.
 	@if test -z '$(CMD)'; then \
-		echo 'Usage: make foreach CMD="commands to run for every package"'; \
+		echo 'Usage: make foreach CMD="commands to run for every module"'; \
 		exit 1; \
 	fi
 	set -eu; \
@@ -25,7 +25,7 @@ foreach: ## Run $(CMD) for every package.
 
 .PHONY: test
 test: test-local
-test: CMD=go test $(RUN_VIA_SUDO) -v -coverprofile=coverage.txt -covermode=atomic .
+test: CMD=go test $(RUN_VIA_SUDO) -v -coverprofile=coverage.txt -covermode=atomic ./...
 test: foreach
 
 # Some modules in this repo have interdependencies:
@@ -40,7 +40,7 @@ test-local:
 	@set -eu; if printf '%s\n' $(PACKAGES) | grep -qx mount && \
 		printf '%s\n' $(PACKAGES) | grep -qx mountinfo; then \
 		echo 'replace github.com/moby/sys/mountinfo => ../mountinfo' | cat mount/go.mod - > mount/go-local.mod; \
-		cd mount && go mod tidy $(MOD) && go test $(MOD) $(RUN_VIA_SUDO) -v .; \
+		cd mount && go mod tidy $(MOD) && go test $(MOD) $(RUN_VIA_SUDO) -v ./...; \
 		$(RM) mount/go-local.*; \
 	else \
 		echo "SKIP: mount local dependency test requires mount and mountinfo"; \
@@ -48,7 +48,7 @@ test-local:
 	@set -eu; if printf '%s\n' $(PACKAGES) | grep -qx atomicwriter && \
 		printf '%s\n' $(PACKAGES) | grep -qx sequential; then \
 		echo 'replace github.com/moby/sys/sequential => ../sequential' | cat atomicwriter/go.mod - > atomicwriter/go-local.mod; \
-		cd atomicwriter && go mod tidy $(MOD) && go test $(MOD) $(RUN_VIA_SUDO) -v .; \
+		cd atomicwriter && go mod tidy $(MOD) && go test $(MOD) $(RUN_VIA_SUDO) -v ./...; \
 		$(RM) atomicwriter/go-local.*; \
 	else \
 		echo "SKIP: atomicwriter local dependency test requires atomicwriter and sequential"; \
@@ -70,6 +70,6 @@ cross:
 		export GOOS=$${osarch%/*} GOARCH=$${osarch#*/}; \
 		echo "# building for $$GOOS/$$GOARCH"; \
 		for p in $(PACKAGES); do \
-			(cd $$p; go build .); \
+			(cd $$p; go build ./...); \
 		done; \
 	done
