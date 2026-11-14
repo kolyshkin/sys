@@ -267,6 +267,18 @@ func requireOpenat2(t *testing.T) {
 	}
 }
 
+func requireStatx(t *testing.T) {
+	t.Helper()
+	if err := tryStatx(); err != nil {
+		t.Skipf("statx: %v (old kernel? need Linux 5.8+)", err)
+	}
+}
+
+func tryStatx() error {
+	_, err := mountedByStatx("/")
+	return err
+}
+
 func tryOpenat2() error {
 	fd, err := unix.Openat2(unix.AT_FDCWD, ".", &unix.OpenHow{Flags: unix.O_RDONLY})
 	if err == nil {
@@ -275,7 +287,7 @@ func tryOpenat2() error {
 	return err
 }
 
-func testMountedFast(t *testing.T, path string, tc *testMount, openat2Supported bool) {
+func testMountedFast(t *testing.T, path string, tc *testMount, fastSupported bool) {
 	mounted, sure, err := MountedFast(path)
 	if err != nil {
 		// Got an error; is it expected?
@@ -295,9 +307,12 @@ func testMountedFast(t *testing.T, path string, tc *testMount, openat2Supported 
 		return
 	}
 
-	if openat2Supported {
+	if fastSupported {
 		if mounted != tc.isMount {
 			t.Errorf("MountedFast: expected mounted to be %v, got %v", tc.isMount, mounted)
+		}
+		if !sure {
+			t.Error("MountedFast: expected sure to be true")
 		}
 
 		// No more checks.
@@ -305,7 +320,7 @@ func testMountedFast(t *testing.T, path string, tc *testMount, openat2Supported 
 	}
 
 	if tc.isBind {
-		// For bind mounts, in case openat2 is not supported,
+		// For bind mounts, in case neither statx nor openat2 is supported,
 		// sure and mounted must be false.
 		if sure {
 			t.Error("MountedFast: expected sure to be false for a bind mount")
@@ -328,13 +343,18 @@ func testMountedFast(t *testing.T, path string, tc *testMount, openat2Supported 
 
 func TestMountedBy(t *testing.T) {
 	checked := false
-	openat2Supported := false
+	// Whether MountedFast can reliably detect bind mounts.
+	fastSupported := false
 
 	// List of individual implementations to check.
 	toCheck := []func(string) (bool, error){mountedByMountinfo, mountedByStat}
 	if tryOpenat2() == nil {
-		openat2Supported = true
+		fastSupported = true
 		toCheck = append(toCheck, mountedByOpenat2)
+	}
+	if tryStatx() == nil {
+		fastSupported = true
+		toCheck = append(toCheck, mountedByStatx)
 	}
 
 	for _, tc := range testMounts {
@@ -360,7 +380,7 @@ func TestMountedBy(t *testing.T) {
 			}
 
 			// Check the public MountedFast() function as a whole.
-			testMountedFast(t, m, &tc, openat2Supported)
+			testMountedFast(t, m, &tc, fastSupported)
 
 			// Check individual mountedBy* implementations.
 
@@ -403,7 +423,15 @@ func TestMountedBy(t *testing.T) {
 
 func TestMountedByOpenat2VsMountinfo(t *testing.T) {
 	requireOpenat2(t)
+	testMountedByVsMountinfo(t, "mountedByOpenat2", mountedByOpenat2)
+}
 
+func TestMountedByStatxVsMountinfo(t *testing.T) {
+	requireStatx(t)
+	testMountedByVsMountinfo(t, "mountedByStatx", mountedByStatx)
+}
+
+func testMountedByVsMountinfo(t *testing.T, name string, fn func(string) (bool, error)) {
 	mounts, err := GetMounts(nil)
 	if err != nil {
 		t.Fatalf("GetMounts error: %v", err)
@@ -416,13 +444,13 @@ func TestMountedByOpenat2VsMountinfo(t *testing.T) {
 			// (this special case is handled by Mounted).
 			continue
 		}
-		mounted, err := mountedByOpenat2(m)
+		mounted, err := fn(m)
 		if err != nil {
 			if !errors.Is(err, os.ErrPermission) {
-				t.Errorf("mountedByOpenat2(%q) error: %+v", m, err)
+				t.Errorf("%s(%q) error: %+v", name, m, err)
 			}
 		} else if !mounted {
-			t.Errorf("mountedByOpenat2(%q): expected true, got false", m)
+			t.Errorf("%s(%q): expected true, got false", name, m)
 		}
 	}
 }
